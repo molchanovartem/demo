@@ -1,4 +1,4 @@
-import { splitArrayIntoFourParts } from './core/splitArrayIntoFourParts.mjs'
+import { splitArrayIntoParts } from './core/splitArrayIntoParts.mjs'
 import { Worker } from 'worker_threads'
 
 const bigArray = Array.from({ length: 300000 }, (_, idx) => idx + 1)
@@ -15,7 +15,7 @@ performance.measure('measure', 'start', 'end')
 console.log(performance.getEntriesByName('measure'))
 
 const compute = (array) => {
-    return new Promise((res) => {
+    return new Promise((res, rej) => {
         const worker = new Worker('./core/worker.mjs', {
             workerData: {
                 array
@@ -25,13 +25,21 @@ const compute = (array) => {
         worker.on('message', (data) => {
             res(data)
         })
+
+        worker.on('error', (data) => {
+            rej(data)
+        })
     })
 }
 performance.mark('worker start')
-const partsOfBigArray = splitArrayIntoFourParts(bigArray, 12)
+const partsOfBigArray = splitArrayIntoParts(bigArray, 12)
 
-const res = await Promise.all(partsOfBigArray.map(compute))
-console.log('Rusult', res.reduce((acc, cur) => acc + cur, 0))
+try {
+    const res = await Promise.all(partsOfBigArray.map(compute))
+    console.log('Rusult', res.reduce((acc, cur) => acc + cur, 0))
+} catch (e) {
+    console.log(e)
+}
 
 performance.mark('worker end')
 performance.measure('worker measure', 'worker start', 'worker end')
